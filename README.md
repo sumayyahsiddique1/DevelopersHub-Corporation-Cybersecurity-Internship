@@ -1,6 +1,6 @@
 # DevelopersHub Corporation - Cybersecurity Internship
 
-> A hands-on cybersecurity internship project focused on building, securing, and auditing web applications using industry-standard tools and best practices.
+> A hands-on cybersecurity internship project focused on building, securing, and auditing web applications using industry-standard tools and best practices on Kali Linux.
 
 ---
 
