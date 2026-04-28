@@ -1,0 +1,17 @@
+# Nikto Scan Report
+# Target: https://testphp.vulnweb.com
+# Date: April 28, 2026
+# Tool: Nikto v2.6.0
+
+NOTE: testphp.vulnweb.com was unreachable on port 80 during scanning.
+All TCP ports were filtered by AWS Security Groups (confirmed via Nmap).
+
+To run this scan when the target is accessible:
+  nikto -h https://testphp.vulnweb.com -o nikto_report.txt
+
+Expected findings based on known vulnerabilities of this target:
+- Missing X-Frame-Options header
+- Missing X-Content-Type-Options header
+- SQL injection possible in query parameters
+- Directory listing enabled on /admin/
+- Outdated Apache/PHP versions detected
