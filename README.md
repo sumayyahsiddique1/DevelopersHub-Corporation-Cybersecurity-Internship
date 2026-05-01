@@ -19,7 +19,7 @@
 ## 📁 Project Structure
 
 ```
-DevelopersHub-Corporation-Cybersecurity-Internship/
+DevelopersHub-Corporation-Cybersecurity-Internship-W4ToW6/
 │
 ├── Week 4 — Threat Detection & Web Security
 │   ├── monitor.py              # Fail2Ban log parser + failed login alert tracker
@@ -34,7 +34,21 @@ DevelopersHub-Corporation-Cybersecurity-Internship/
 │       ├── nikto_report.txt    # Nikto web vulnerability scan output
 │       └── sqlmap_output/      # SQLMap scan results directory
 │
+├── Week 6 — Security Audits & Final Deployment
+│   ├── Dockerfile              # Hardened Docker container for Flask app
+│   ├── .dockerignore           # Excludes sensitive files from image
+│   └── week6-reports/
+│       ├── zap_report.html     # OWASP ZAP web application scan report
+│       ├── nikto_week6.txt     # Nikto scan — Week 6 comparison run
+│       ├── nikto_flask.txt     # Nikto scan against Flask app
+│       ├── lynis_report.txt    # Lynis Linux system security audit
+│       ├── bandit_report.txt   # Bandit Python static code analysis
+│       ├── trivy_report.txt    # Trivy Docker image vulnerability scan
+│       ├── metasploit_report.txt # Metasploit auxiliary scan results
+│       └── owasp_compliance.md # OWASP Top 10 compliance checklist
+│
 ├── requirements.txt            # All Python dependencies
+├── Weeks4_5_6_Cybersecurity_Report.docx  # Full implementation report
 └── README.md
 ```
 
@@ -105,136 +119,195 @@ Implement real-time intrusion detection, harden API endpoints against common att
 ## 📅 Week 5 — Ethical Hacking & Exploitation
 
 ### 🎯 Goal
-Perform active reconnaissance on a legally sanctioned target, exploit a SQL injection vulnerability using SQLMap, build a vulnerable + secure demo app to illustrate the fix, and implement CSRF protection with Flask-WTF.
+Perform active reconnaissance on a legally sanctioned target, exploit a SQL injection vulnerability using SQLMap, build a vulnerable and secure demo app to illustrate the fix, and implement CSRF protection with Flask-WTF.
 
 ---
 
 ### ✅ Features Implemented
 
-#### 🔍 1. Reconnaissance on testphp.vulnweb.com (Task 1)
+#### 🕵️ 1. Reconnaissance on testphp.vulnweb.com
 
 Target: `testphp.vulnweb.com` — a site intentionally built for security testing by Acunetix.
 
 **Tools used:** `whois`, `nslookup`, `dig`, `nmap`, `nikto`, `curl`
 
-**Key Findings:**
+| Finding             | Detail                                                        |
+|---------------------|---------------------------------------------------------------|
+| IP Address          | 44.228.249.3                                                  |
+| Hosting             | Amazon AWS EC2 — US-West-2 (Oregon)                          |
+| Domain Registrar    | Gandi SAS (France)                                            |
+| Domain Created      | June 14, 2010                                                 |
+| DNSSEC              | Unsigned — DNS responses not cryptographically verified       |
+| Nmap Port Scan      | All 1000 TCP ports filtered — blocked by AWS Security Groups |
+| Nmap Finding        | WAF/firewall active; cloud infrastructure confirmed via rDNS  |
 
-| Finding                | Detail                                                        |
-|------------------------|---------------------------------------------------------------|
-| IP Address             | 44.228.249.3                                                  |
-| Hosting                | Amazon AWS EC2 — US-West-2 (Oregon)                          |
-| Domain Registrar       | Gandi SAS (France)                                            |
-| Domain Created         | June 14, 2010                                                 |
-| DNSSEC                 | Unsigned — DNS responses not cryptographically verified       |
-| Google Verification    | TXT record found (Google site-verification)                   |
-| Nmap Port Scan         | All 1000 TCP ports filtered — blocked by AWS Security Groups |
-| Nmap Finding           | WAF/firewall active; cloud infrastructure exposed via rDNS    |
+#### 💉 2. SQL Injection — SQLMap + Prepared Statement Fix
 
-```bash
-# WHOIS
-whois vulnweb.com
+- Set up **DVWA** (Damn Vulnerable Web Application) locally on Apache + MySQL
+- Used **SQLMap** against DVWA — confirmed **time-based blind** and **UNION query** injection
+- Dumped the full `users` table including usernames and MD5 hashed passwords
+- Built `sqli_demo.py` to show the attack on a vulnerable Flask route vs a secure route using **prepared statements**
 
-# DNS Lookup
-nslookup testphp.vulnweb.com
-dig testphp.vulnweb.com
-dig testphp.vulnweb.com ANY
+| Route               | Method              | SQL Injection | Result                       |
+|---------------------|---------------------|---------------|------------------------------|
+| `/login/vulnerable` | f-string query      | ❌ Unsafe      | Bypassed with `' OR '1'='1` |
+| `/login/secure`     | Prepared `?` params | ✅ Safe        | Injection blocked            |
 
-# Port Scan
-nmap testphp.vulnweb.com
-nmap -sV testphp.vulnweb.com
-nmap -Pn -p 80,443 testphp.vulnweb.com
+#### 🛡️ 3. CSRF Protection with Flask-WTF
 
-# Web Vulnerability Scan
-nikto -h https://testphp.vulnweb.com
-
-# HTTP Headers
-curl -I https://testphp.vulnweb.com
-```
-
-All recon output saved to `week5-reports/recon_notes.md`.
-
----
-
-#### 💉 2. SQL Injection — SQLMap + Prepared Statement Fix (Task 2)
-
-**SQLMap commands run against testphp.vulnweb.com:**
-
-```bash
-# Basic scan — detect injection point
-sqlmap -u "http://testphp.vulnweb.com/listproducts.php?cat=1" --batch
-
-# Enumerate all databases
-sqlmap -u "http://testphp.vulnweb.com/listproducts.php?cat=1" --batch --dbs
-
-# List tables in acuart database
-sqlmap -u "http://testphp.vulnweb.com/listproducts.php?cat=1" --batch -D acuart --tables
-
-# Dump users table
-sqlmap -u "http://testphp.vulnweb.com/listproducts.php?cat=1" --batch -D acuart -T users --dump
-```
-
-**SQLi Fix — `sqli_demo.py`** implements both a vulnerable and a secure route side-by-side:
-
-| Route                    | Method           | SQL Injection | Result                        |
-|--------------------------|------------------|---------------|-------------------------------|
-| `/login/vulnerable`      | f-string query   | ❌ Unsafe      | Bypassed with `' OR '1'='1`  |
-| `/login/secure`          | Prepared `?` params | ✅ Safe    | Injection blocked             |
-
-```bash
-# Test vulnerable route — injection works
-curl "http://localhost:5000/login/vulnerable?username=admin&password=' OR '1'='1"
-
-# Test secure route — injection blocked
-curl "http://localhost:5000/login/secure?username=admin&password=' OR '1'='1"
-```
-
----
-
-#### 🛡️ 3. CSRF Protection with Flask-WTF (Task 3)
-
-**File: `csrf_demo.py`**
-
-| Route                         | CSRF Protected | Behaviour                              |
-|-------------------------------|----------------|----------------------------------------|
-| `POST /update-profile`        | ✅ Yes          | Blocked with 403 if token missing      |
-| `POST /update-profile/unprotected` | ❌ No     | Accepts any POST — vulnerable          |
-| `GET /csrf-token`             | N/A            | Returns valid token for API testing    |
-
-**Test commands:**
-
-```bash
-# Test 1 — POST without CSRF token (BLOCKED — 403)
-curl -X POST http://localhost:5000/update-profile \
-  -d "username=hacker&email=hacker@evil.com"
-
-# Test 2 — Get a valid token
-TOKEN=$(curl -s http://localhost:5000/csrf-token | python3 -c "import sys,json; print(json.load(sys.stdin)['csrf_token'])")
-
-# Test 3 — POST with valid token (SUCCESS)
-curl -X POST http://localhost:5000/update-profile \
-  -d "username=alice&email=alice@test.com&csrf_token=$TOKEN"
-
-# Test 4 — Unprotected route — no token needed (VULNERABLE)
-curl -X POST http://localhost:5000/update-profile/unprotected \
-  -d "username=hacker&email=hacker@evil.com"
-```
+- Implemented **CSRF token validation** on all POST routes using `flask-wtf`
+- Built `csrf_demo.py` with a protected route and an unprotected route for comparison
+- Requests without a valid CSRF token are rejected with **403 Forbidden**
 
 ---
 
 ### 🔐 Week 5 Security Outcomes
 
-| Task                       | Tool / Method                       | Status  |
-|----------------------------|-------------------------------------|---------|
-| Recon — WHOIS              | whois                               | ✅ Done |
-| Recon — DNS                | nslookup, dig                       | ✅ Done |
-| Recon — Port Scan          | nmap -sV                            | ✅ Done |
-| Recon — Web Vuln Scan      | nikto                               | ✅ Done |
-| SQLi — Exploit             | sqlmap --dbs, --tables, --dump      | ✅ Done |
-| SQLi — Vulnerable Demo     | sqli_demo.py /login/vulnerable      | ✅ Done |
-| SQLi — Secure Fix          | sqli_demo.py /login/secure          | ✅ Done |
-| CSRF — Protection          | flask-wtf CSRFProtect               | ✅ Done |
-| CSRF — Tested              | curl + Burp Suite                   | ✅ Done |
-| GitHub repo updated        | git push                            | ✅ Done |
+| Task                       | Tool / Method                  | Status  |
+|----------------------------|--------------------------------|---------|
+| Recon — WHOIS              | whois                          | ✅ Done |
+| Recon — DNS                | nslookup, dig                  | ✅ Done |
+| Recon — Port Scan          | nmap -sV                       | ✅ Done |
+| Recon — Web Vuln Scan      | nikto (DVWA)                   | ✅ Done |
+| SQLi — Exploit             | sqlmap --dbs, --tables, --dump | ✅ Done |
+| SQLi — Vulnerable Demo     | sqli_demo.py /login/vulnerable | ✅ Done |
+| SQLi — Secure Fix          | sqli_demo.py /login/secure     | ✅ Done |
+| CSRF — Protection          | flask-wtf CSRFProtect          | ✅ Done |
+| CSRF — Tested              | curl + Burp Suite              | ✅ Done |
+
+---
+
+## 📅 Week 6 — Advanced Security Audits & Final Deployment
+
+### 🎯 Goal
+Conduct advanced security audits against the application and system, verify OWASP Top 10 compliance, containerise the application using Docker with security best practices, scan for vulnerabilities, and perform a final penetration test.
+
+---
+
+### ✅ Features Implemented
+
+#### 🔍 1. Security Audits & Compliance
+
+**OWASP ZAP** — automated web application vulnerability scan against DVWA and the Flask app:
+- Identified missing security headers, insecure cookies, and potential XSS vectors in DVWA
+- Flask app passed significantly better due to flask-talisman headers applied in Week 4
+- Full report saved to `week6-reports/zap_report.html`
+
+**Nikto** — web server scan (Week 6 comparison run):
+- Re-ran against DVWA and Flask app to compare with Week 5 findings
+- Flask app now shows CSP, HSTS, and X-Content-Type-Options present
+- Confirms Week 4 security headers are effective
+
+**Lynis** — full Linux system security audit:
+- Audited kernel hardening, file permissions, authentication, and network settings
+- Produces a Hardening Index score out of 100
+- All suggestions and warnings saved to `week6-reports/lynis_report.txt`
+
+**Python Security Scanning:**
+- `safety check` — scanned all installed packages against known CVE database
+- `bandit` — static analysis of Python code for security issues
+- Confirmed `sqli_demo.py` correctly flags B608 (SQL string formatting) on the vulnerable route
+
+**OWASP Top 10 Compliance:**
+
+| # | Risk                        | Status    | Control Applied                              |
+|---|-----------------------------|-----------|----------------------------------------------|
+| A01 | Broken Access Control     | ✅ Fixed  | API Key auth + route protection              |
+| A02 | Cryptographic Failures    | ✅ Fixed  | HTTPS enforced via HSTS                      |
+| A03 | Injection                 | ✅ Fixed  | Prepared statements + CSP                    |
+| A04 | Insecure Design           | ✅ Fixed  | Rate limiting + CSRF tokens                  |
+| A05 | Security Misconfiguration | ✅ Fixed  | flask-talisman headers globally applied      |
+| A06 | Vulnerable Components     | ✅ Checked | safety check + Trivy image scan             |
+| A07 | Auth & Session Failures   | ✅ Fixed  | API keys + CSRF session-bound tokens         |
+| A08 | Software Integrity        | ✅ Fixed  | Dependency scanning with safety + bandit     |
+| A09 | Logging & Monitoring      | ✅ Fixed  | Fail2Ban + monitor.py dashboard              |
+| A10 | SSRF                      | ➖ N/A    | Not applicable to current app scope          |
+
+---
+
+#### 🐳 2. Secure Docker Deployment
+
+Docker was used to containerise the Flask application with the following security best practices applied:
+
+| Practice                     | Applied | How                                              |
+|------------------------------|---------|--------------------------------------------------|
+| Official slim base image     | ✅      | `python:3.11-slim` — minimal attack surface      |
+| Run as non-root user         | ✅      | Created `appuser` — `USER appuser` in Dockerfile |
+| Read-only filesystem         | ✅      | `--read-only` flag on `docker run`               |
+| No privilege escalation      | ✅      | `--no-new-privileges` flag                       |
+| No secrets in image          | ✅      | `.dockerignore` excludes `.env` and `.db` files  |
+| Image vulnerability scan     | ✅      | Trivy scan on `cybersec-app:v1`                  |
+| Health check configured      | ✅      | `HEALTHCHECK` in Dockerfile — 30s interval       |
+| Minimal dependencies only    | ✅      | `--no-cache-dir`, only `requirements.txt` packages |
+| Auto security updates on host| ✅      | `unattended-upgrades` enabled                    |
+
+```bash
+# Build the image
+docker build -t cybersec-app:v1 .
+
+# Scan with Trivy
+trivy image cybersec-app:v1
+
+# Run securely
+docker run -d \
+  --name cybersec-container \
+  --read-only \
+  --no-new-privileges \
+  -p 5000:5000 \
+  cybersec-app:v1
+```
+
+---
+
+#### 💀 3. Final Penetration Testing
+
+**Metasploit Framework:**
+- Initialised `msfdb` and launched `msfconsole`
+- Ran auxiliary modules: HTTP version scanner, TCP port scanner, directory scanner
+- Results saved to `week6-reports/metasploit_report.txt`
+
+**Burp Suite:**
+- Configured Firefox to proxy through Burp on `127.0.0.1:8080`
+- Intercepted and analysed all DVWA and Flask app requests
+- Sent requests to Repeater to manually test for injection and CSRF weaknesses
+- Confirmed CSRF protection — removing `csrf_token` from POST body returns `403 Forbidden`
+- Ran active scanner via Dashboard — findings saved to Issues tab
+
+---
+
+### 🛠️ Week 6 Tech Stack
+
+| Tool              | Purpose                                    |
+|-------------------|--------------------------------------------|
+| OWASP ZAP         | Web application vulnerability scanning     |
+| Nikto             | Web server vulnerability scanning          |
+| Lynis             | Linux system security auditing             |
+| Docker            | Application containerisation               |
+| Trivy             | Docker image CVE scanning                  |
+| Metasploit        | Auxiliary penetration testing              |
+| Burp Suite        | HTTP proxy + web application scanner       |
+| safety            | Python dependency CVE checking             |
+| bandit            | Python static code security analysis       |
+| unattended-upgrades | Automatic system security updates        |
+
+---
+
+### 🔐 Week 6 Security Outcomes
+
+| Task                               | Tool                          | Status  |
+|------------------------------------|-------------------------------|---------|
+| OWASP ZAP scan (DVWA + Flask)      | zaproxy                       | ✅ Done |
+| Nikto scan (DVWA + Flask)          | nikto                         | ✅ Done |
+| Lynis system audit                 | lynis                         | ✅ Done |
+| Python dependency scan             | safety + bandit               | ✅ Done |
+| OWASP Top 10 compliance check      | Manual checklist              | ✅ Done |
+| Auto security updates enabled      | unattended-upgrades           | ✅ Done |
+| Dockerfile created (hardened)      | docker build                  | ✅ Done |
+| Docker image vulnerability scan    | trivy                         | ✅ Done |
+| Container run with security flags  | docker run                    | ✅ Done |
+| Metasploit auxiliary scan          | msfconsole                    | ✅ Done |
+| Burp Suite final scan + CSRF test  | burpsuite                     | ✅ Done |
+| GitHub repo updated                | git push                      | ✅ Done |
 
 ---
 
@@ -242,8 +315,8 @@ curl -X POST http://localhost:5000/update-profile/unprotected \
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/YOUR_USERNAME/DevelopersHub-Corporation-Cybersecurity-Internship.git
-cd DevelopersHub-Corporation-Cybersecurity-Internship
+git clone https://github.com/sumayyahsiddique1/DevelopersHub-Corporation-Cybersecurity-Internship-W4ToW6.git
+cd DevelopersHub-Corporation-Cybersecurity-Internship-W4ToW6
 
 # 2. Create and activate virtual environment
 python3 -m venv venv
@@ -260,13 +333,11 @@ python3 secure_headers.py   # Security headers active (port 5000)
 # 5. Run Week 5 modules
 python3 sqli_demo.py        # SQLi vulnerable vs secure demo (port 5000)
 python3 csrf_demo.py        # CSRF protection demo (port 5000)
+
+# 6. Run Week 6 Docker deployment
+docker build -t cybersec-app:v1 .
+docker run -d --name cybersec-container --read-only --no-new-privileges -p 5000:5000 cybersec-app:v1
 ```
-
----
-
-## 📅 Week 6 — Coming Soon
-
-> Security Audits, OWASP ZAP, Secure Deployment, Final Penetration Test
 
 ---
 
